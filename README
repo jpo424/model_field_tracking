@@ -1,0 +1,107 @@
+ModelFieldTracking
+==================
+
+A plugin that helps you track changes to you models.
+Even more than that, it lets you construct a score report for each instance that says how "healthy"  a model is.
+It considers 3 things:
+
+1. Freshness- how recently was the model created or edited
+2. Confidence - who touched it last or how accurate do we intuitively think it is
+3. Importance - how important we think this model is to our app
+
+These three things come together to define a model's Health. Also, using the same concepts,
+this plugin also lets us measure a model's attribute health.
+
+Simply include the module into a model class and it immediately becomes trackable and scorable. 
+
+Features:
+
+1. full model field change tracking
+2. Health reporting at the field level.
+3. Health reporting at the model level.
+4. single field validations
+5. others :) 
+
+Example
+=======
+
+# SAMPLE CLASS
+
+class Location < ActiveRecord::Base
+  
+  include ModelFieldTracking::FieldTracker
+  
+  # define a field to be tracked using the defaults
+  define_field(:city)
+  
+  define_field(:state)
+    # how important the field is in the model
+    f.weight = 70
+    # how many days until this field value is considered stale
+    f.max_age = 500
+  end
+  
+end
+
+# DONE!!! Now being tracked
+
+# EXAMPLE USAGE
+
+location = Location.create(:city=> "New York", :state => "Grace")
+location.save
+# for each new attribute value, a field change entry has been created
+
+
+location.latest_change_for(:city)
+# => last field_change entry for city
+
+location.field_def_for(:city)
+# => instance of FieldDefinition class
+
+location.confidence_for(:city)
+# => integer val
+
+location.freshness_for(:city)
+# => integer val
+
+location.health_for(:city)
+# => integer, total health score for model
+
+location.freshness
+# => total freshness(how recent it has been updated)
+
+location.health
+# => total health of model
+
+location.valid_attribute?(:city)
+# => True or False
+
+# and many more functions in model_field_tracking.rb
+
+NOTE:
+
+- if you add a health column to each model you want to track,
+  the health value for the model will be saved there so it is not
+  recomputed each time
+  
+- Also, we could have a user model class(or admin_user,etc) that can edit a trackable model
+
+EXAMPLE:
+
+class User < ActiveRecord::Base
+  
+  # module from plugin
+  include ModelFieldTracking::SourceConfidence 
+  
+  def confidence
+    70
+  end
+end
+
+user = User.create()
+# pass teh user to the model we want to track
+location = Location.create(:city=> "New York", :state => "Grace", :source => user)
+location.save
+
+# Now, the source is associated with the field_change instance for each attribute
+# the user's confidence value is used for calculations instead of the default
